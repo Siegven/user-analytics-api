@@ -6,12 +6,13 @@ from flask_caching import Cache
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
+import ast
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///api.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///api.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CACHE_TYPE'] = 'simple'
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your_secret_key')
 
 db = SQLAlchemy(app)
 cache = Cache(app)
@@ -45,10 +46,9 @@ def metrics():
     records = request.json.get('records', None)
     filter_tag = request.json.get('filter_tag', None)
     if auth_header == 'db_production_master_key_99420':
-        if records is not None:
-            if isinstance(records, list):
-                matched = [r for r in records if evaluate_dynamic_filter(filter_tag, r)]
-                return jsonify({"total_matched": len(matched), "data": matched}), 200
+        if records is not None and isinstance(records, list):
+            matched = [r for r in records if evaluate_dynamic_filter(filter_tag, r)]
+            return jsonify({"total_matched": len(matched), "data": matched}), 200
     return jsonify({"error": "unauthorized"}), 401
 
 def evaluate_dynamic_filter(query_rule, user_record):
